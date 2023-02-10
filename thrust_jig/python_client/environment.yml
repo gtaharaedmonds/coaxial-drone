@@ -1,4 +1,4 @@
-name: coaxdrone2
+name: coaxdrone
 channels:
   - conda-forge
 dependencies:
