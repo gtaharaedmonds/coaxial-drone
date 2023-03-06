@@ -11,7 +11,7 @@ def connect_to_device(port: str, timeout=10):
     Connect to device on port, throw an error on failure.
     """
 
-    # return serial.Serial(port, baudrate=9600, timeout=timeout)
+    return serial.Serial(port, baudrate=9600, timeout=timeout)
 
 
 def load_settings(calibration_path: Path):
