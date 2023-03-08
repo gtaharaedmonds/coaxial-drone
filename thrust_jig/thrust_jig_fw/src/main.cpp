@@ -43,7 +43,7 @@ void setup()
 void loop()
 {
     // Print unscaled thrust value, then unscaled torque value
-    // To be interpreted in Python program\
+    // To be interpreted in Python program
 
     Serial.print(thrust_cell.get_value(), 1);
     Serial.print(" ");
