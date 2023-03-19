@@ -6,4 +6,4 @@ dependencies:
   - pyserial-asyncio
   - pip
   - pip:
-    - mavsdk
+    - pymavlink
