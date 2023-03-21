@@ -1,0 +1,5 @@
+Date,21-Feb,,
+Channels,Thrust,Torque,Time
+Offsets,0.0072671,0,0
+Scales,4.68E-05,2.62E-06,0.001
+Unit,N,Nm,s
