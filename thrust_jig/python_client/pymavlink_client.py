@@ -63,6 +63,22 @@ def force_disarm():
         0, # param6
         0) # param7
 
+def get_last_log():
+    drone.mav.log_request_list_send(
+        drone.target_system,
+        drone.target_component,
+        start=0,
+        end=0xffff
+    )
+    print('Getting last log')
+    log_entry_msg = drone.recv_match(type='LOG_ENTRY', blocking=True).to_dict()
+    print('Got last log')
+    drone.mav.log_request_end_send(
+        drone.target_system,
+        drone.target_component
+    )
+    return log_entry_msg['last_log_num']
+
 def get_param(param):
     drone.param_fetch_one(param)
     drone.recv_match(type='PARAM_VALUE', blocking=True)
@@ -136,21 +152,25 @@ def sweep_vane(channel: Literal['x', 'y'], direction: Literal[-1, 1], end_val=No
 def run_manual_test(test_fcn, ccw_enabled=True, cw_enabled=True):
     with log_file:
         csv_writer.writerow(['Start', datetime.now(tz=local_tz).strftime('%Y-%m-%dT%H:%M:%S.%f%z')])
-        # Enable manual motor control
-        print('Enabling manual motor control')
-        enable_motor_passthrough(ccw_enabled=ccw_enabled, cw_enabled=cw_enabled)
-        # Set ACRO mode
-        print('Setting ACRO mode')
-        set_mode('ACRO')
-        print('Acro mode set')
-
-        # Run test
-        drone.arducopter_arm()
-        print('Arming')
-        drone.motors_armed_wait()
-        print('Motors armed')
-        csv_writer.writerow(['Armed', datetime.now(tz=local_tz).strftime('%Y-%m-%dT%H:%M:%S.%f%z')])
         try:
+            # Enable manual motor control
+            print('Enabling manual motor control')
+            enable_motor_passthrough(ccw_enabled=ccw_enabled, cw_enabled=cw_enabled)
+            # Set ACRO mode
+            print('Setting ACRO mode')
+            set_mode('ACRO')
+            print('Acro mode set')
+            log_id = get_last_log()
+            csv_writer.writerow(['Last log', log_id])
+
+            # Run test
+            drone.arducopter_arm()
+            print('Arming')
+            drone.motors_armed_wait()
+            print('Motors armed')
+            csv_writer.writerow(['Armed', datetime.now(tz=local_tz).strftime('%Y-%m-%dT%H:%M:%S.%f%z')])
+            sys_time_arm = drone.recv_match(type='SYSTEM_TIME', blocking=True).to_dict()
+            csv_writer.writerow(['Arm system time', sys_time_arm['time_boot_ms']])
             test_fcn()
         finally:
             force_disarm()
