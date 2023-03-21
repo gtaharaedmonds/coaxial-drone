@@ -1,12 +1,21 @@
 import pymavlink.mavutil
 import time
+from datetime import datetime
+import csv
+from pathlib import Path
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     import pymavlink.mavutil.mavlink # pyright: reportMissingModuleSource = false
 
 # drone = mavutil.mavlink_connection('COM6', baud=57600, source_system=245)
 drone = pymavlink.mavutil.mavlink_connection('udpin:0.0.0.0:14551', source_system=245)
+
+log_dir = Path('test_logs')
+local_tz = datetime.now().astimezone().tzinfo
+file_time = datetime.now(tz=local_tz)
+log_file = open(log_dir / f'{file_time:%Y-%m-%dT%H_%M_%S%z}.csv', 'w', newline='')
+csv_writer = csv.writer(log_file)
 
 def enable_motor_passthrough(ccw_enabled=True, cw_enabled=True):
     drone.param_set_send('SYSID_MYGCS', 245, pymavlink.mavutil.mavlink.MAVLINK_TYPE_INT16_T) # set this script as ground control
@@ -81,6 +90,7 @@ def sweep_channel(channel: Literal['x', 'y', 'z', 'r'],
             break
         print(f'{channel} channel input: {input_fraction}')
         input_scaled = int(input_fraction * (end_val - start_val) + start_val)
+        csv_writer.writerow([input_scaled, datetime.now(tz=local_tz).strftime('%Y-%m-%dT%H:%M:%S.%f%z')])
         for _ in range(frequency * test_length // steps):
             drone.mav.manual_control_send(
                 target=drone.target_system,
@@ -124,26 +134,32 @@ def sweep_vane(channel: Literal['x', 'y'], direction: Literal[-1, 1], end_val=No
     sweep_channel(channel, **params, **kwargs)
 
 def run_manual_test(test_fcn, ccw_enabled=True, cw_enabled=True):
-    # Enable manual motor control
-    print('Enabling manual motor control')
-    enable_motor_passthrough(ccw_enabled=ccw_enabled, cw_enabled=cw_enabled)
-    # Set ACRO mode
-    print('Setting ACRO mode')
-    set_mode('ACRO')
-    print('Acro mode set')
+    with log_file:
+        csv_writer.writerow(['Start', datetime.now(tz=local_tz).strftime('%Y-%m-%dT%H:%M:%S.%f%z')])
+        # Enable manual motor control
+        print('Enabling manual motor control')
+        enable_motor_passthrough(ccw_enabled=ccw_enabled, cw_enabled=cw_enabled)
+        # Set ACRO mode
+        print('Setting ACRO mode')
+        set_mode('ACRO')
+        print('Acro mode set')
 
-    # Run test
-    drone.arducopter_arm()
-    print('Arming')
-    drone.motors_armed_wait()
-    print('Motors armed')
-    test_fcn()
-    force_disarm()
-    print('Disarming')
-    drone.motors_disarmed_wait()
-    print('Disarmed')
-    disable_motor_passthrough()
-    print('Disabled manual motor control')
+        # Run test
+        drone.arducopter_arm()
+        print('Arming')
+        drone.motors_armed_wait()
+        print('Motors armed')
+        csv_writer.writerow(['Armed', datetime.now(tz=local_tz).strftime('%Y-%m-%dT%H:%M:%S.%f%z')])
+        try:
+            test_fcn()
+        finally:
+            force_disarm()
+            print('Disarming')
+            disable_motor_passthrough()
+            print('Disabled manual motor control')
+            drone.motors_disarmed_wait()
+            print('Disarmed')
+            csv_writer.writerow(['Disarmed', datetime.now(tz=local_tz).strftime('%Y-%m-%dT%H:%M:%S.%f%z')])
 
 def run_dual_prop_throttle_sweep():
     run_manual_test(sweep_throttle)
