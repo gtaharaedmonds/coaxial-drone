@@ -26,7 +26,7 @@ static HX711 torque_cell;
 
 void setup()
 {
-    Serial.begin(9600);
+    Serial.begin(115200);
     Serial.println("Thrust Jig Firmware Program");
 
     thrust_cell.begin(thrust_config.data_pin, thrust_config.clk_pin);
@@ -45,9 +45,11 @@ void loop()
     // Print unscaled thrust value, then unscaled torque value
     // To be interpreted in Python program
 
+    Serial.print(torque_cell.get_value(), 1);
+    Serial.print(" ");
     Serial.print(thrust_cell.get_value(), 1);
     Serial.print(" ");
-    Serial.print(torque_cell.get_value(), 1);
+    Serial.print(millis(), 1);
     Serial.println();
 
     delay(100);
