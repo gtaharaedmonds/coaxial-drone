@@ -23,6 +23,7 @@ void loop()
 {
     if (loop_i < 10000) {
         setThrottle(MOTOR_2, 50);
+        Serial.println(getRpm(MOTOR_2));
     }
     else if (loop_i == 10000) {
         stopBldcMotor(MOTOR_2);
