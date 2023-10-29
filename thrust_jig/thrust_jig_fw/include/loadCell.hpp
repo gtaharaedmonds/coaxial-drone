@@ -6,10 +6,10 @@
 #include <stdint.h>
 
 /* Symbolic Constants */
-#define THRUST_DATA_PIN 18
-#define TORQUE_DATA_PIN 32
-#define THRUST_CLK_PIN 19
-#define TORQUE_CLK_PIN 33
+#define THRUST_DATA_PIN 18U
+#define TORQUE_DATA_PIN 32U
+#define THRUST_CLK_PIN 19U
+#define TORQUE_CLK_PIN 33U
 
 #define LOAD_CELL_CALIBRATION 5000
 
