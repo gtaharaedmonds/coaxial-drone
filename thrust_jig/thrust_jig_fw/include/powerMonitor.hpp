@@ -12,13 +12,13 @@
 #define MOTOR1_ISENSE_PIN 34
 #define MOTOR2_ISENSE_PIN 35
 
-// CALIBRATION CONSTANTS (reporting raw ADC voltage for now)
-#define PDB_VSENSE_GAIN 1.0
+// CALIBRATION CONSTANTS (from datasheets for now)
+#define PDB_VSENSE_GAIN 1.0/21.0/1000.0
 #define PDB_VSENSE_OFFSET 0.0
-#define PDB_ISENSE_GAIN 1.0 
+#define PDB_ISENSE_GAIN 0.08
 #define PDB_ISENSE_OFFSET 0.0
-#define ACS712_GAIN 1.0
-#define ACS712_OFFSET 0.0
+#define ACS712_GAIN -1.0/66.0
+#define ACS712_OFFSET 2500
 
 /* Type Definitions */
 struct PowerMonitorAdcConfig_S {

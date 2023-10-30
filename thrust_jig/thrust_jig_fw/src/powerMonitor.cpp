@@ -44,9 +44,44 @@ float getCurrentA(CurrentSensor_E sensor) {
     {
         case IBAT:
             adcVoltageMilliVolts = ibatAdc.readMiliVolts();
+            currentAmps = (adcVoltageMilliVolts - ibatConfig.calibratedOffset) * ibatConfig.calibratedGain;
+            break;
+
+        case IMOTOR1:
+            adcVoltageMilliVolts = iMotor1Adc.readMiliVolts();
+            currentAmps = (adcVoltageMilliVolts - iMotor1Config.calibratedOffset) * iMotor1Config.calibratedGain;
+            break;
+
+        case IMOTOR2:
+            adcVoltageMilliVolts = iMotor2Adc.readMiliVolts();
+            currentAmps = (adcVoltageMilliVolts - iMotor2Config.calibratedOffset) * iMotor2Config.calibratedGain;
+            break;
+
+        default:
+            break;
+
+    }
+
+    return currentAmps;
+}
+
+float getVoltageV(VoltageSensor_E sensor) {
+    float voltageVolts;
+    uint32_t adcVoltageMilliVolts;
+
+    switch (sensor) {
+        case VBAT:
+            adcVoltageMilliVolts = vbatAdc.readMiliVolts();
+            voltageVolts = (adcVoltageMilliVolts - vbatConfig.calibratedOffset) * vbatConfig.calibratedGain;
             break;
         
         default:
             break;
     }
+
+    return voltageVolts;
+}
+
+float getPowerW(CurrentSensor_E sensor) {
+    return getVoltageV(VBAT) * getCurrentA(sensor);
 }
