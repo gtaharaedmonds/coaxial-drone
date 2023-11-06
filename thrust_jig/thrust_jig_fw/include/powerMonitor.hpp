@@ -7,10 +7,10 @@
 
 /* Symbolic Constants */
 // ESP32 GPIO PINS
-#define VBAT_SENSE_PIN 36
-#define IBAT_SENSE_PIN 39
-#define MOTOR1_ISENSE_PIN 34
-#define MOTOR2_ISENSE_PIN 35
+#define VBAT_SENSE_PIN 15
+#define IBAT_SENSE_PIN 2
+#define MOTOR1_ISENSE_PIN 0
+#define MOTOR2_ISENSE_PIN 4
 
 // CALIBRATION CONSTANTS (from datasheets for now)
 #define PDB_VSENSE_GAIN 1.0/21.0/1000.0
