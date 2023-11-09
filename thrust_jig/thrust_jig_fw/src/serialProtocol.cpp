@@ -1,5 +1,7 @@
 #include "serialProtocol.hpp"
 
+std::deque<CommandSet_S> test_spec;
+
 void receiveTestSpec(void) {
     String input;
     int num_values;
@@ -33,8 +35,9 @@ void receiveTestSpec(void) {
                 }
             } else {
                 CommandSet_S command_set;
-                num_values = scanf(
-                    "%lu,%f,%f,%d,%d",
+                num_values = sscanf(
+                    input.c_str(),
+                    "%lu,%lf,%lf,%d,%d",
                     &command_set.time_ms,
                     &command_set.top_percent,
                     &command_set.bot_percent,
@@ -43,7 +46,6 @@ void receiveTestSpec(void) {
                 );
                 if (num_values == NUM_COMMAND_SET_VALUES) {
                     test_spec.push_back(command_set);
-                    break;
                 } else {
                     Serial.println("Invalid command");
                 }

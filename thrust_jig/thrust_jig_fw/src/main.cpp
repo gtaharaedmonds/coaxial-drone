@@ -70,12 +70,12 @@ void loop()
         while (Serial.available()) {
             char c = Serial.read();
             if (c == '\n' && input != "Stop") {
-                input = "";
-            } else if (c >= 0 && c != '\n') {
+                input.clear();
+            } else if (c >= 0) {
                 input += c;
             }
         }
-        if (test_spec.size() <= 1 || (Serial.available() && input == "Stop")) {
+        if (test_spec.size() <= 1 || input == "Stop\n") {
             input = "";
             stopBldcMotor(ALL);
             setServoPwm(PITCH_VANE, 1500);

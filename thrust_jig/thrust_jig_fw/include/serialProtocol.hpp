@@ -18,8 +18,8 @@ struct CommandSet_S
     int roll_us;
 };
 
-/* Static variables */
-static std::deque<CommandSet_S> test_spec;
+/* Global variables */
+extern std::deque<CommandSet_S> test_spec;
 
 /* Function definitions */
 void receiveTestSpec(void);
