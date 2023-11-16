@@ -1,56 +1,89 @@
 #include <stdint.h>
 
-#include "HX711.h"
-
-typedef struct
-{
-    uint8_t data_pin;
-    uint8_t clk_pin;
-    int calibration;
-} LoadCellAmpConfig;
-
-static const LoadCellAmpConfig thrust_config = {
-    .data_pin = 18,
-    .clk_pin = 19,
-    .calibration = 5000,
-};
-
-static const LoadCellAmpConfig torque_config = {
-    .data_pin = 32,
-    .clk_pin = 33,
-    .calibration = 5000,
-};
-
-static HX711 thrust_cell;
-static HX711 torque_cell;
+#include "bldcMotor.hpp"
+#include "servoMotor.hpp"
+#include "loadCell.hpp"
+#include "powerMonitor.hpp"
+#include "serialProtocol.hpp"
 
 void setup()
 {
     Serial.begin(115200);
     Serial.println("Thrust Jig Firmware Program");
 
-    thrust_cell.begin(thrust_config.data_pin, thrust_config.clk_pin);
-    torque_cell.begin(torque_config.data_pin, torque_config.clk_pin);
-
-    thrust_cell.set_scale(thrust_config.calibration);
-    torque_cell.set_scale(torque_config.calibration);
-
-    // Zero the
-    thrust_cell.tare();
-    torque_cell.tare();
+    Serial.println("Setting up");
+    setupBldcMotor(MOTOR_1);
+    setupBldcMotor(MOTOR_2);
+    setupServo(PITCH_VANE);
+    setupServo(ROLL_VANE);
+    setupLoadCell(THRUST);
+    setupLoadCell(TORQUE);
+    setupPowerMonitor();
 }
+
+enum ProgramState_E {
+    SETUP_TEST,
+    RUN_TEST
+};
+static ProgramState_E state = SETUP_TEST;
+static unsigned long start_time_micros = 0;
+static unsigned long start_time_millis = 0;
+static CommandSet_S current_command;
+static String input = "";
 
 void loop()
 {
-    // Print unscaled thrust value, then unscaled torque value
-    // To be interpreted in Python program
-
-    Serial.print(torque_cell.get_value(), 1);
-    Serial.print(" ");
-    Serial.print(thrust_cell.get_value(), 1);
-    Serial.print(" ");
-    Serial.print(millis(), 1);
-    Serial.println();
-
-    delay(100);
+    switch (state)
+    {
+    case SETUP_TEST:
+        receiveTestSpec();
+        armBldcMotor(ALL);
+        start_time_micros = micros();
+        start_time_millis = millis();
+        Serial.println("Starting test");
+        Serial.println("time_us,top_rpm,bot_rpm,v_bat,i_bat,i_top,i_bot,thrust_N,torque_Nm");
+        state = RUN_TEST;
+        break;
+    
+    case RUN_TEST:
+        if (test_spec.size() > 1 && test_spec.at(1).time_ms < millis() - start_time_millis) {
+            test_spec.pop_front();
+        }
+        current_command = test_spec.front();
+        setThrottlePercent(MOTOR_1, current_command.top_percent);
+        setThrottlePercent(MOTOR_2, current_command.bot_percent);
+        setServoPwm(PITCH_VANE, current_command.pitch_us);
+        setServoPwm(ROLL_VANE, current_command.roll_us);
+        Serial.printf(
+            "%lu,%" PRIu16 ",%" PRIu16 ",%f,%f,%f,%f,%f,%f\n",
+            micros() - start_time_micros,
+            getRpm(MOTOR_1),
+            getRpm(MOTOR_2),
+            getVoltageV(VBAT),
+            getCurrentA(IBAT),
+            getCurrentA(IMOTOR1),
+            getCurrentA(IMOTOR2),
+            getLoadCellValue(THRUST),
+            getLoadCellValue(TORQUE)
+        );
+        // Nonblocking string read persistent over multiple loop iterations
+        while (Serial.available()) {
+            char c = Serial.read();
+            if (c == '\n' && input != "Stop") {
+                input.clear();
+            } else if (c >= 0) {
+                input += c;
+            }
+        }
+        if (test_spec.size() <= 1 || input == "Stop\n") {
+            input = "";
+            stopBldcMotor(ALL);
+            setServoPwm(PITCH_VANE, 1500);
+            setServoPwm(ROLL_VANE, 1500);
+            state = SETUP_TEST;
+            Serial.println("Stopped");
+        }
+        delay(1);
+        break;
+    }
 }
