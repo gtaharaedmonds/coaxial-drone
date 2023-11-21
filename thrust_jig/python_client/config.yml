@@ -1,0 +1,36 @@
+channels:
+  thrust:
+    name: Thrust
+    scale: 4.68e-5
+    offset: 0.0072671
+    unit: N
+  torque:
+    name: Torque
+    scale: 2.62e-6
+    offset: 0
+    unit: Nm
+  rpm_top:
+    name: Top Motor RPM
+    scale: 1
+    offset: 0
+    unit: rpm
+  rpm_bottom:
+    name: Bottom Motor RPM
+    scale: 1
+    offset: 0
+    unit: rpm
+  current_top:
+    name: Top Motor Current
+    scale: 1
+    offset: 0
+    unit: A
+  current_bottom:
+    name: Bottom Motor Current
+    scale: 1
+    offset: 0
+    unit: A
+  batt_voltage:
+    name: Battery Voltage
+    scale: 1
+    offset: 0
+    unit: V
