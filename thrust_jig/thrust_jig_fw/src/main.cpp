@@ -38,6 +38,14 @@ void loop()
     case SETUP_TEST:
         receiveTestSpec();
         armBldcMotor(ALL);
+
+        // Flush buffer of RPM data before running test
+        for (size_t i = 0; i < 25; i++)
+        {
+            getRpm(MOTOR_1);
+            getRpm(MOTOR_2);
+        }
+        
         start_time_micros = micros();
         start_time_millis = millis();
         Serial.println("Starting test");
