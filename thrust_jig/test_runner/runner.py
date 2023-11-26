@@ -86,7 +86,7 @@ class TestPlan:
     name: str
     steps: List[TestStep]
 
-    def commands(self) -> List[TestCommand]:
+    def commands(self, teardown=True) -> List[TestCommand]:
         commands = [
             TestCommand(
                 time_ms=0,
@@ -101,16 +101,22 @@ class TestPlan:
         for step in self.steps:
             commands.append(TestCommand.next(step=step, last=commands[-1]))
 
-        commands.append(
-            TestCommand(
-                time_ms=commands[-1].time_ms + commands[-1].duration_ms,
-                duration_ms=0,
-                top_throttle=0,
-                bottom_throttle=0,
-                pitch_angle=0,
-                roll_angle=0,
-            )
-        )
+        if teardown:
+            while commands[-1].top_throttle != 0 or commands[-1].bottom_throttle != 0:
+                last_top = commands[-1].top_throttle
+                last_bottom = commands[-1].bottom_throttle
+                next_top = max(0, last_top - 1)
+                next_bottom = max(0, last_bottom - 1)
+                commands.append(
+                    TestCommand.next(
+                        step=TestStep(
+                            duration_ms=20,
+                            top_throttle=next_top,
+                            bottom_throttle=next_bottom,
+                        ),
+                        last=commands[-1],
+                    )
+                )
 
         return commands
 
@@ -125,7 +131,11 @@ class TestRunner:
     def available_ports() -> List[Optional[str]]:
         return [port.device for port in serial.tools.list_ports.comports()]
 
-    def run(self, plan: TestPlan):
+    @staticmethod
+    def keys() -> List[str]:
+        return list(INDEX_MAP.keys())
+
+    def run(self, plan: TestPlan, teardown=True):
         self.data = {}
 
         with serial.Serial(
@@ -135,7 +145,7 @@ class TestRunner:
             ser.write(b"time_ms,top_throttle,bottom_throttle,pitch_us,roll_us\n")
             ser.write(b"Begin new test spec\n")
 
-            for command in plan.commands():
+            for command in plan.commands(teardown=teardown):
                 command_line = f"{command.time_ms},{command.top_throttle},{command.bottom_throttle},{command.pitch_angle},{command.roll_angle}\n"
                 ser.write((command_line).encode("utf-8"))
 
