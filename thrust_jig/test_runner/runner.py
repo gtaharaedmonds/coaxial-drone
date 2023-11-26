@@ -164,11 +164,7 @@ class TestRunner:
                 for datapoint_key, datapoint_idx in INDEX_MAP.items():
                     value = float(values[datapoint_idx])
                     value = CONVERSION_MAP[datapoint_key](value)
-
-                    if datapoint_key in self.data:
-                        self.data[datapoint_key].append(value)
-                    else:
-                        self.data[datapoint_key] = [value]
+                    self.add_datapoint(key=datapoint_key, value=value)
 
             print("Test complete.")
 
@@ -177,16 +173,22 @@ class TestRunner:
         key: str,
         tmin: Optional[int] = None,
         tmax: Optional[int] = None,
+        figsize=(6, 6),
+        title=None,
         *args,
         **kwargs,
     ) -> None:
         time = self.values("time_ms", tmin=tmin, tmax=tmax)
         values = self.values(key, tmin=tmin, tmax=tmax)
 
-        plt.figure(figsize=(6, 6))
+        plt.figure(figsize=figsize)
         plt.plot(time, values, *args, **kwargs)
         plt.xlabel(LABEL_MAP["time_ms"])
         plt.ylabel(LABEL_MAP[key])
+
+        if title is not None:
+            plt.title(title)
+
         plt.show()
 
     def save(self, path: str) -> None:
@@ -194,6 +196,20 @@ class TestRunner:
             writer = csv.writer(csv_file)
             writer.writerow([LABEL_MAP[key] for key in self.data.keys()])
             writer.writerows(zip(*self.data.values()))
+
+    @staticmethod
+    def load(path: str) -> "TestRunner":
+        runner = TestRunner("")
+        runner.data = {}
+
+        with open(path) as csv_file:
+            reader = csv.reader(csv_file)
+            next(reader)  # Skip header
+            for row in reader:
+                for key, idx in INDEX_MAP.items():
+                    runner.add_datapoint(key=key, value=float(row[idx]))
+
+        return runner
 
     def values(
         self, key: str, tmin: Optional[float] = None, tmax: Optional[float] = None
@@ -218,6 +234,12 @@ class TestRunner:
 
         values = self.data[key][imin:imax]
         return np.array(values)
+
+    def add_datapoint(self, key: str, value: float) -> None:
+        if key in self.data:
+            self.data[key].append(value)
+        else:
+            self.data[key] = [value]
 
 
 if __name__ == "__main__":
