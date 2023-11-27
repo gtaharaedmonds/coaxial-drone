@@ -8,7 +8,7 @@
 
 void setup()
 {
-    Serial.begin(115200);
+    Serial.begin(921600);
     Serial.println("Thrust Jig Firmware Program");
 
     Serial.println("Setting up");

@@ -12,7 +12,8 @@
 #define TORQUE_DATA_PIN 18U
 #define TORQUE_CLK_PIN 19U
 
-#define LOAD_CELL_CALIBRATION 5000
+#define THRUST_CELL_CALIBRATION 21400
+#define TORQUE_CELL_CALIBRATION 382000
 
 /* Type Definitions */
 enum LoadCellType_E {

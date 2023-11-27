@@ -14,7 +14,7 @@
 #define DSHOT_CMD_SPIN_DIRECTION_REVERSED 21U
 #define DSHOT_THROTTLE_ZERO 48U
 
-#define ARM_DURATION 3000
+#define ARM_DURATION 2000
 
 /* Type Definitions */
 enum bldcMotor_E {

@@ -7,7 +7,7 @@ import numpy as np
 import csv
 
 
-SERIAL_BAUD = 115200
+SERIAL_BAUD = 921600
 INDEX_MAP = {
     "time_ms": 0,
     "top_motor_rpm": 1,
