@@ -18,7 +18,8 @@
 #define PDB_ISENSE_GAIN 0.08
 #define PDB_ISENSE_OFFSET 0.0
 #define ACS712_GAIN -1.0/66.0
-#define ACS712_OFFSET 2500
+#define MOTOR1_OFFSET 2589
+#define MOTOR2_OFFSET 2572
 
 /* Type Definitions */
 struct PowerMonitorAdcConfig_S {

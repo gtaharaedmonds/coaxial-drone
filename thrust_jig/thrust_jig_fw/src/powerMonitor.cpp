@@ -15,13 +15,13 @@ static const PowerMonitorAdcConfig_S ibatConfig {
 static const PowerMonitorAdcConfig_S iMotor1Config {
     .adcPin = MOTOR1_ISENSE_PIN,
     .calibratedGain = ACS712_GAIN,
-    .calibratedOffset = ACS712_OFFSET
+    .calibratedOffset = MOTOR1_OFFSET
 };
 
 static const PowerMonitorAdcConfig_S iMotor2Config {
     .adcPin = MOTOR2_ISENSE_PIN,
     .calibratedGain = ACS712_GAIN,
-    .calibratedOffset = ACS712_OFFSET
+    .calibratedOffset = MOTOR2_OFFSET
 };
 
 static ESP32AnalogRead vbatAdc;
