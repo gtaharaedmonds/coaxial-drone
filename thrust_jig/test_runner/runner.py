@@ -141,22 +141,36 @@ class TestRunner:
         with serial.Serial(
             port=self.port, baudrate=SERIAL_BAUD, timeout=self.timeout
         ) as ser:
+            print("Tx: Begin new test spec")
             ser.write(b"Begin new test spec\n")
+            print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
+            print("Tx: time_ms,top_throttle,bottom_throttle,pitch_us,roll_us")
             ser.write(b"time_ms,top_throttle,bottom_throttle,pitch_us,roll_us\n")
-            ser.write(b"Begin new test spec\n")
+            print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
 
             for command in plan.commands(teardown=teardown):
                 command_line = f"{command.time_ms},{command.top_throttle},{command.bottom_throttle},{command.pitch_angle},{command.roll_angle}\n"
                 ser.write((command_line).encode("utf-8"))
 
+            print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
             ser.write(b"Run test\n")
             print("Arming...")
-            ser.readline().decode()
-            ser.readline().decode()
+            print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
+            ctrl_msgs = (
+                '',
+                'Thrust Jig Firmware Program\r\n',
+                'Setting up\r\n',
+                'Ready to load test spec\r\n',
+                'Starting test\r\n',
+                'time_us,top_rpm,bot_rpm,v_bat,i_bat,i_top,i_bot,thrust_N,torque_Nm\r\n')
 
             print("Running test...")
             while True:
-                rx_data = ser.readline().decode()
+                rx_data = ser.readline().decode(errors="backslashreplace")
+                print(f'Rx: {rx_data}')
+                if rx_data in ctrl_msgs:
+                    print('Skipped rx')
+                    continue
                 if "Stopped" in rx_data:
                     break
 

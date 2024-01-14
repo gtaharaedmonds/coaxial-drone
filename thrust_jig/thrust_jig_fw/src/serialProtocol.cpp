@@ -11,7 +11,7 @@ void receiveTestSpec(void) {
         if (input == "Begin new test spec") {
             break;
         } else if (input != "") {
-            Serial.println("Invalid command");
+            Serial.printf("Invalid command: %s\n", input);
         }
     }
     while (true) {
@@ -47,7 +47,7 @@ void receiveTestSpec(void) {
                 if (num_values == NUM_COMMAND_SET_VALUES) {
                     test_spec.push_back(command_set);
                 } else {
-                    Serial.println("Invalid command");
+                    Serial.printf("Invalid command: %s\n", input);
                 }
             }
         }
