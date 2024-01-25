@@ -14,13 +14,13 @@ static const PowerMonitorAdcConfig_S ibatConfig {
 
 static const PowerMonitorAdcConfig_S iMotor1Config {
     .adcPin = MOTOR1_ISENSE_PIN,
-    .calibratedGain = ACS712_GAIN,
+    .calibratedGain = MOTOR1_GAIN,
     .calibratedOffset = MOTOR1_OFFSET
 };
 
 static const PowerMonitorAdcConfig_S iMotor2Config {
     .adcPin = MOTOR2_ISENSE_PIN,
-    .calibratedGain = ACS712_GAIN,
+    .calibratedGain = MOTOR2_GAIN,
     .calibratedOffset = MOTOR2_OFFSET
 };
 
