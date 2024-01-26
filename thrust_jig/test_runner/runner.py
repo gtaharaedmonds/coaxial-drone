@@ -5,7 +5,7 @@ import serial.tools.list_ports
 import matplotlib.pyplot as plt
 import numpy as np
 import csv
-
+import time
 
 SERIAL_BAUD = 921600
 INDEX_MAP = {
@@ -141,21 +141,24 @@ class TestRunner:
         with serial.Serial(
             port=self.port, baudrate=SERIAL_BAUD, timeout=self.timeout
         ) as ser:
+            time.sleep(1)
+
             print("Tx: Begin new test spec")
             ser.write(b"Begin new test spec\n")
-            print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
+            print(f'FAIL Rx 1: {ser.readline().decode(errors="backslashreplace")}')
             print("Tx: time_ms,top_throttle,bottom_throttle,pitch_us,roll_us")
             ser.write(b"time_ms,top_throttle,bottom_throttle,pitch_us,roll_us\n")
-            print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
+            print(f'FAIL Rx 2: {ser.readline().decode(errors="backslashreplace")}')
 
             for command in plan.commands(teardown=teardown):
                 command_line = f"{command.time_ms},{command.top_throttle},{command.bottom_throttle},{command.pitch_angle},{command.roll_angle}\n"
                 ser.write((command_line).encode("utf-8"))
+                time.sleep(0.001)
 
-            print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
+            print(f'FAIL Rx 3: {ser.readline().decode(errors="backslashreplace")}')
             ser.write(b"Run test\n")
             print("Arming...")
-            print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
+            print(f'FAIL Rx 4: {ser.readline().decode(errors="backslashreplace")}')
             ctrl_msgs = (
                 '',
                 'Thrust Jig Firmware Program\r\n',
@@ -166,8 +169,8 @@ class TestRunner:
 
             print("Running test...")
             while True:
-                rx_data = ser.readline().decode(errors="backslashreplace")
-                print(f'Rx: {rx_data}')
+                rx_data = ser.readline().decode()
+                print(f'Rx 5: {rx_data}')
                 if rx_data in ctrl_msgs:
                     print('Skipped rx')
                     continue
@@ -179,6 +182,8 @@ class TestRunner:
                     value = float(values[datapoint_idx])
                     value = CONVERSION_MAP[datapoint_key](value)
                     self.add_datapoint(key=datapoint_key, value=value)
+
+                time.sleep(0.001)
 
             print("Test complete.")
 
