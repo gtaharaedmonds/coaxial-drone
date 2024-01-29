@@ -1,11 +1,18 @@
-from typing import Optional, List
-from dataclasses import dataclass
+from typing import Optional, List, Dict
+from dataclasses import dataclass, field
+from pathlib import Path
+from os import PathLike
 import serial
 import serial.tools.list_ports
 import matplotlib.pyplot as plt
 import numpy as np
-import csv
-import time
+import pandas as pd
+import configparser
+import warnings
+
+
+config = configparser.ConfigParser()
+config.read("runner.ini")
 
 SERIAL_BAUD = 921600
 INDEX_MAP = {
@@ -41,6 +48,7 @@ LABEL_MAP = {
     "thrust_N": "Thrust (N)",
     "torque_N": "Torque (N)",
 }
+INV_LABEL_MAP = {v: k for k, v in LABEL_MAP.items()}
 
 
 @dataclass(frozen=True)
@@ -121,138 +129,9 @@ class TestPlan:
         return commands
 
 
-class TestRunner:
-    def __init__(self, port: str, timeout=10):
-        self.port = port
-        self.timeout = timeout
-        self.data = {}
-
-    @staticmethod
-    def available_ports() -> List[Optional[str]]:
-        return [port.device for port in serial.tools.list_ports.comports()]
-
-    @staticmethod
-    def keys() -> List[str]:
-        return list(INDEX_MAP.keys())
-
-    def run(self, plan: TestPlan, teardown=True):
-        self.data = {}
-
-        with serial.Serial(
-            port=self.port, baudrate=SERIAL_BAUD, timeout=self.timeout
-        ) as ser:
-            time.sleep(1)
-
-            print("Tx: Begin new test spec")
-            ser.write(b"Begin new test spec\n")
-            print(f'FAIL Rx 1: {ser.readline().decode(errors="backslashreplace")}')
-            print("Tx: time_ms,top_throttle,bottom_throttle,pitch_us,roll_us")
-            ser.write(b"time_ms,top_throttle,bottom_throttle,pitch_us,roll_us\n")
-            print(f'FAIL Rx 2: {ser.readline().decode(errors="backslashreplace")}')
-
-            for command in plan.commands(teardown=teardown):
-                command_line = f"{command.time_ms},{command.top_throttle},{command.bottom_throttle},{command.pitch_angle},{command.roll_angle}\n"
-                ser.write((command_line).encode("utf-8"))
-                time.sleep(0.001)
-
-            print(f'FAIL Rx 3: {ser.readline().decode(errors="backslashreplace")}')
-            ser.write(b"Run test\n")
-            print("Arming...")
-            print(f'FAIL Rx 4: {ser.readline().decode(errors="backslashreplace")}')
-            ctrl_msgs = (
-                '',
-                'Thrust Jig Firmware Program\r\n',
-                'Setting up\r\n',
-                'Ready to load test spec\r\n',
-                'Starting test\r\n',
-                'time_us,top_rpm,bot_rpm,v_bat,i_bat,i_top,i_bot,thrust_N,torque_Nm\r\n')
-
-            print("Running test...")
-            while True:
-                rx_data = ser.readline().decode()
-                print(f'Rx 5: {rx_data}')
-                if rx_data in ctrl_msgs:
-                    print('Skipped rx')
-                    continue
-                if "Stopped" in rx_data:
-                    break
-
-                values = rx_data.split(",")
-                for datapoint_key, datapoint_idx in INDEX_MAP.items():
-                    value = float(values[datapoint_idx])
-                    value = CONVERSION_MAP[datapoint_key](value)
-                    self.add_datapoint(key=datapoint_key, value=value)
-
-                time.sleep(0.001)
-
-            print("Test complete.")
-
-    def plot(
-        self,
-        key: str,
-        tmin: Optional[int] = None,
-        tmax: Optional[int] = None,
-        figsize=(6, 6),
-        title=None,
-        *args,
-        **kwargs,
-    ) -> None:
-        time = self.values("time_ms", tmin=tmin, tmax=tmax)
-        values = self.values(key, tmin=tmin, tmax=tmax)
-
-        plt.figure(figsize=figsize)
-        plt.plot(time, values, *args, **kwargs)
-        plt.xlabel(LABEL_MAP["time_ms"])
-        plt.ylabel(LABEL_MAP[key])
-
-        if title is not None:
-            plt.title(title)
-
-        plt.show()
-
-    def save(self, path: str) -> None:
-        with open(path, "w") as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow([LABEL_MAP[key] for key in self.data.keys()])
-            writer.writerows(zip(*self.data.values()))
-
-    @staticmethod
-    def load(path: str) -> "TestRunner":
-        runner = TestRunner("")
-        runner.data = {}
-
-        with open(path) as csv_file:
-            reader = csv.reader(csv_file)
-            next(reader)  # Skip header
-            for row in reader:
-                for key, idx in INDEX_MAP.items():
-                    runner.add_datapoint(key=key, value=float(row[idx]))
-
-        return runner
-
-    def values(
-        self, key: str, tmin: Optional[float] = None, tmax: Optional[float] = None
-    ) -> np.ndarray:
-        # Find bounds for t_min.
-        time = np.array(self.data["time_ms"])
-
-        imin = 0
-        if tmin is not None:
-            for i, t in enumerate(time):
-                if t > tmin:
-                    imin = i
-                    break
-
-        # Find bounds for t_max.
-        imax = len(time)
-        if tmax is not None:
-            for i, t in enumerate(time):
-                if t > tmax:
-                    imax = i
-                    break
-
-        values = self.data[key][imin:imax]
-        return np.array(values)
+@dataclass(frozen=True)
+class TestDataBuilder:
+    data: Dict[str, List[float]] = field(default_factory=dict)
 
     def add_datapoint(self, key: str, value: float) -> None:
         if key in self.data:
@@ -260,9 +139,103 @@ class TestRunner:
         else:
             self.data[key] = [value]
 
+    def frozen(self) -> pd.DataFrame:
+        return pd.DataFrame(self.data).set_index("time_ms")
+
+
+def available_ports() -> List[Optional[str]]:
+    return [port.device for port in serial.tools.list_ports.comports()]
+
+
+def test_run(
+    filename: Optional[str | PathLike[str]],
+    plan: Optional[TestPlan] = None,
+    teardown=True,
+    port: Optional[str] = None,
+    timeout: Optional[float] = None,
+) -> pd.DataFrame:
+    if filename is not None:
+        filename = Path(filename)
+        if filename.exists():
+            print("Loading saved data")
+            return (
+                pd.read_csv(filename, index_col="Time (ms)")
+                .rename(columns=INV_LABEL_MAP)
+                .rename_axis("time_ms")
+            )
+    if plan is None:
+        raise ValueError(
+            "File does not exist and no test plan was provided to run a new test"
+        )
+    if port is None:
+        port = config.get("Runner", "port", fallback=None)
+        if port is None:
+            raise ValueError(
+                "Could not find a runner.ini config file. Create one in the format of runner.example.ini or specify the 'port' parameter"
+            )
+    if timeout is None:
+        timeout = config.getfloat("Runner", "timeout", fallback=0.1)
+
+    test_data_builder = TestDataBuilder()
+
+    with serial.Serial(port=port, baudrate=SERIAL_BAUD, timeout=timeout) as ser:
+        print("Tx: Begin new test spec")
+        ser.write(b"Begin new test spec\n")
+        print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
+        print("Tx: time_ms,top_throttle,bottom_throttle,pitch_us,roll_us")
+        ser.write(b"time_ms,top_throttle,bottom_throttle,pitch_us,roll_us\n")
+        print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
+
+        for command in plan.commands(teardown=teardown):
+            command_line = f"{command.time_ms},{command.top_throttle},{command.bottom_throttle},{command.pitch_angle},{command.roll_angle}\n"
+            ser.write((command_line).encode("utf-8"))
+
+        print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
+        ser.write(b"Run test\n")
+        print("Arming...")
+        print(f'FAIL Rx: {ser.readline().decode(errors="backslashreplace")}')
+        ctrl_msgs = (
+            "",
+            "Thrust Jig Firmware Program\r\n",
+            "Setting up\r\n",
+            "Ready to load test spec\r\n",
+            "Starting test\r\n",
+            "time_us,top_rpm,bot_rpm,v_bat,i_bat,i_top,i_bot,thrust_N,torque_Nm\r\n",
+        )
+
+        print("Running test...")
+        while True:
+            rx_data = ser.readline().decode(errors="backslashreplace")
+            print(f"Rx: {rx_data}")
+            if rx_data in ctrl_msgs:
+                print("Skipped rx")
+                continue
+            if "Stopped" in rx_data:
+                break
+
+            values = rx_data.split(",")
+            for datapoint_key, datapoint_idx in INDEX_MAP.items():
+                value = float(values[datapoint_idx])
+                value = CONVERSION_MAP[datapoint_key](value)
+                test_data_builder.add_datapoint(key=datapoint_key, value=value)
+
+        print("Test complete.")
+        test_data = test_data_builder.frozen()
+        if filename is not None:
+            try:
+                test_data.rename(columns=LABEL_MAP).rename_axis("Time (ms)").to_csv(
+                    filename
+                )
+                print("Saved to file")
+            except Exception as e:
+                warnings.warn(
+                    f"File save failed. Test data must be saved manually. Captured exception: {e}"
+                )
+        return test_data
+
 
 if __name__ == "__main__":
-    print(f"Serial ports: {TestRunner.available_ports()}")
+    print(f"Serial ports: {available_ports()}")
 
     steps = [
         TestStep(bottom_throttle=throttle, duration_ms=100) for throttle in range(0, 20)
@@ -272,7 +245,6 @@ if __name__ == "__main__":
         steps=steps,
     )
 
-    runner = TestRunner(port="/dev/ttyUSB0")
-    runner.run(plan=plan)
-    runner.plot("bottom_motor_rpm")
-    runner.save("test_csv.csv")
+    data = test_run(filename=None, plan=plan, port="/dev/ttyUSB0")
+    data.plot(y="bottom_motor_rpm")
+    data.to_csv("test_csv.csv")
