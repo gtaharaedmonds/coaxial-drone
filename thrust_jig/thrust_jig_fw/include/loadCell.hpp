@@ -12,8 +12,10 @@
 #define TORQUE_DATA_PIN 18U
 #define TORQUE_CLK_PIN 19U
 
-#define THRUST_CELL_CALIBRATION 21400
-#define TORQUE_CELL_CALIBRATION 382000
+#define THRUST_CELL_GAIN 18291
+#define THRUST_CELL_OFFSET -131570
+
+#define TORQUE_CELL_GAIN 382000
 
 /* Type Definitions */
 enum LoadCellType_E {
@@ -24,7 +26,8 @@ enum LoadCellType_E {
 struct LoadCellAmpConfig_S {
     uint8_t data_pin;
     uint8_t clk_pin;
-    int calibration;
+    int gain;
+    int offset;
 };
 
 /* Function Definitions */

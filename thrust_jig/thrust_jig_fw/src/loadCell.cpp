@@ -3,13 +3,14 @@
 static const LoadCellAmpConfig_S thrust_config = {
     .data_pin = THRUST_DATA_PIN,
     .clk_pin = THRUST_CLK_PIN,
-    .calibration = THRUST_CELL_CALIBRATION,
+    .gain = THRUST_CELL_GAIN,
+    .offset = THRUST_CELL_OFFSET
 };
 
 static const LoadCellAmpConfig_S torque_config = {
     .data_pin = TORQUE_DATA_PIN,
     .clk_pin = TORQUE_CLK_PIN,
-    .calibration = TORQUE_CELL_CALIBRATION,
+    .gain = TORQUE_CELL_GAIN,
 };
 
 static HX711 thrust_cell;
@@ -21,15 +22,14 @@ void setupLoadCell(LoadCellType_E loadCellType){
     switch (loadCellType) {
         case THRUST:
             thrust_cell.begin(thrust_config.data_pin, thrust_config.clk_pin);
-            thrust_cell.set_scale(thrust_config.calibration);
+            thrust_cell.set_scale(thrust_config.gain);
+            thrust_cell.set_offset(thrust_config.offset);
             break;
         case TORQUE:
             torque_cell.begin(torque_config.data_pin, torque_config.clk_pin);
-            torque_cell.set_scale(torque_config.calibration);
+            torque_cell.set_scale(torque_config.gain);
             break;
     }
-
-    tareLoadCell(loadCellType);
 }
 
 double getLoadCellValue(LoadCellType_E loadCellType){
