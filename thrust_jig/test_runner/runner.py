@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import configparser
 import warnings
+import time
 
 
 config = configparser.ConfigParser()
@@ -203,21 +204,41 @@ def test_run(
             "time_us,top_rpm,bot_rpm,v_bat,i_bat,i_top,i_bot,thrust_N,torque_Nm\r\n",
         )
 
-        print("Running test...")
-        while True:
-            rx_data = ser.readline().decode(errors="backslashreplace")
-            print(f"Rx: {rx_data}")
-            if rx_data in ctrl_msgs:
-                print("Skipped rx")
-                continue
-            if "Stopped" in rx_data:
-                break
+        last_time = time.time()
 
-            values = rx_data.split(",")
-            for datapoint_key, datapoint_idx in INDEX_MAP.items():
-                value = float(values[datapoint_idx])
-                value = CONVERSION_MAP[datapoint_key](value)
-                test_data_builder.add_datapoint(key=datapoint_key, value=value)
+        try:
+            print("Running test...")
+            while True:
+                if time.time() - last_time > 10:
+                    break
+
+                rx_data = ser.readline().decode(errors="backslashreplace")
+                print(f"Rx: {rx_data}")
+                if rx_data in ctrl_msgs:
+                    print("Skipped rx")
+                    continue
+                if "Stopped" in rx_data:
+                    break
+
+                values = rx_data.split(",")
+
+                valid = True
+                for datapoint_key, datapoint_idx in INDEX_MAP.items():
+                    try:
+                        value = float(values[datapoint_idx])
+                    except:
+                        valid = False
+                if valid:
+                    last_time = time.time()
+                if not valid:
+                    continue
+
+                for datapoint_key, datapoint_idx in INDEX_MAP.items():
+                    value = float(values[datapoint_idx])
+                    value = CONVERSION_MAP[datapoint_key](value)
+                    test_data_builder.add_datapoint(key=datapoint_key, value=value)
+        except:
+            pass
 
         print("Test complete.")
         test_data = test_data_builder.frozen()
